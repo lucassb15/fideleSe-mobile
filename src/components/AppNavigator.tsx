@@ -17,7 +17,7 @@ const Tab = createBottomTabNavigator();
 const EmptyScreen = () => null;
 
 const AppNavigator: React.FC = () => {
-  // Use o AuthContext para acessar a função de signOut
+  // AuthContext para acessar a função de signOut
   const { signOut } = useAuth();
   const logoutHandler = () => {
     Alert.alert('Logout', 'Deseja sair?', [
