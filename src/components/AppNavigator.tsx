@@ -2,10 +2,10 @@ import React, { useContext } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import HomeScreen from '../screens/HomeScreen';
-import QRScreen from '../screens/QRScreen';
 import { Ionicons } from '@expo/vector-icons'; 
 import  { useAuth } from '../contexts/AuthContext'
 import { Alert } from 'react-native';
+import QRScreen from '../screens/QRScreen';
 
 export type RootStackParamList = {
   Home: undefined;
