@@ -1,7 +1,6 @@
-// Importando os módulos necessários
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
-import { useAuth } from '../../contexts/AuthContext'; // Função para fazer login na API
+import { useAuth } from '../../contexts/AuthContext';
 
 // Componente da tela de login
 const LoginScreen = () => {
@@ -39,9 +38,6 @@ const handleLogin = async () => {
   }
 };
 
-
-
-  // Renderizando a tela de login
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Faça login</Text>
@@ -86,5 +82,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Exportando o componente da tela de login
 export default LoginScreen;

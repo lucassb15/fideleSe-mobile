@@ -16,8 +16,8 @@ interface UserProps {
   name: string
   email: string
   role: Roles
-  companyId?: string
-  isEmployee?: boolean
+  companyId: string
+  isEmployee: boolean
   logo?: FileList
   isActive?: boolean
 }
