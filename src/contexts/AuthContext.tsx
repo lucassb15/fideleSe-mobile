@@ -81,7 +81,7 @@ useEffect(() => {
         const currentTime = new Date().getTime().toString();
         await AsyncStorage.setItem('fidelese.token', response.data.accessToken);
         await AsyncStorage.setItem('fidelese.token-time', currentTime);
-        setUser(response.data.user); // Atualiza o estado do usuário com os dados do usuário logado
+        setUser(response.data.user);
         return response.data.user;
       }
     } catch (error) {

@@ -4,32 +4,80 @@ import { Camera, PermissionStatus, CameraType } from 'expo-camera';
 import { useCardsEmployee } from '../contexts/CardsEmployee';
 import { useAuth } from '../contexts/AuthContext';
 import { BarCodeScannerResult } from 'expo-barcode-scanner';
+import { API_URL } from '@env';
 
 export default function QRScreen(): JSX.Element {
-  const { cards, fetchCards, error } = useCardsEmployee();
+  const { cards, fetchCards, sendLoyaltyData, sendLoyaltyDataPoints, error } = useCardsEmployee();
   const [hasPermission, setHasPermission] = useState<PermissionStatus | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [cardId, setCardId] = useState<string | null>(null);
+  cardId as string
+  const [isQRCodeProcessed, setIsQRCodeProcessed] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchCards();
+    // Verifica se o usuário está disponível e se possui um companyId antes de buscar os cartões
+    if (user && user.companyId) {
+      fetchCards();
+    } else {
+      console.warn('User company ID is not available.');
+    }
+
     (async () => {
-      const { status } = await Camera.requestPermissionsAsync();
+      const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status);
     })();
-  }, []);
+  }, [user]);
 
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>Erro: {error}</Text>
-      </View>
-    );
-  }
+  // if (error) {
+  //   return (
+  //     <View style={styles.container}>
+  //       <Text style={styles.errorText}>Erro: {error}</Text>
+  //     </View>
+  //   );
+  // }
 
-  const handleQRCodeRead = ({ type, data }: BarCodeScannerResult) => {
-    Alert.alert('QR Code lido', `Tipo: ${type}, Dados: ${data}`);
+  const handleQRCodeRead = async ({ type, data }: BarCodeScannerResult) => {
+    if (isQRCodeProcessed) return; // Se já processado, saia
+
+    setIsQRCodeProcessed(true); // Marque como processado
+
+    try {
+      console.log('QR Code Data:', data);
+      const qrData = JSON.parse(data as string);
+      console.log('Parsed QR Data:', qrData);
+
+      if (!user || !user.companyId) {
+        Alert.alert('Erro', 'User ou companyId não está disponível.');
+        return;
+      }
+
+      let responseMessage = '';
+
+      if (qrData.cardId && qrData.companyCardId) {
+        // Chama sendLoyaltyDataPoints se o QR Code contém cardId e companyCardId
+        await sendLoyaltyDataPoints({
+          cardId: qrData.cardId,
+          companyCardId: cardId as string,
+          token: qrData.token,
+        });
+      } else if (qrData.customerId) {
+        // Chama sendLoyaltyData se o QR Code contém customerId
+        await sendLoyaltyData({
+          customerId: qrData.customerId,
+          companyCardId: cardId as string,
+          token: qrData.token,
+        });
+      } else {
+        responseMessage = 'Dados do QR Code incompletos';
+      }
+
+    } catch (error: any) {
+      console.error('Failed to process QR Code:', error);
+      Alert.alert('Erro', error.response?.data?.message || 'Falha ao processar o QR Code.');
+    }
     setIsScannerOpen(false);
+    setIsQRCodeProcessed(false);
   };
 
   if (hasPermission === null) {
@@ -45,7 +93,7 @@ export default function QRScreen(): JSX.Element {
       {isScannerOpen ? (
         <Camera
           style={styles.camera}
-          type={CameraType.back} // Usando CameraType.back diretamente
+          type={CameraType.back}
           onBarCodeScanned={isScannerOpen ? handleQRCodeRead : undefined}
         >
           <Text style={styles.centerText}>Aponte a câmera para o QR Code</Text>
@@ -57,12 +105,12 @@ export default function QRScreen(): JSX.Element {
               <View key={card.id} style={styles.card}>
                 <Image
                   style={styles.cardImage}
-                  source={{ uri: `https://picsum.photos/200` }} // Substitua esta URL pela URL real da imagem se necessário
+                  source={{ uri: `http://${API_URL}/${card.image}` }} // Certifique-se de que API_URL está definido corretamente
                 />
                 <View style={styles.cardContent}>
                   <Text style={styles.cardTitle}>{card.name}</Text>
                   <Text style={styles.cardPoints}>{card.maxPoints} Points</Text>
-                  <TouchableOpacity onPress={() => setIsScannerOpen(true)} style={styles.qrButton}>
+                  <TouchableOpacity onPress={() => { setIsScannerOpen(true); setCardId(card.id);}} style={styles.qrButton}>
                     <Text style={styles.qrButtonText}>Ler QR Code</Text>
                   </TouchableOpacity>
                 </View>
