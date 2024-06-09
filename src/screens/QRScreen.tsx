@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView } from 'react-native';
 import { Camera, PermissionStatus, CameraType } from 'expo-camera';
 import { useCardsEmployee } from '../contexts/CardsEmployee';
 import { useAuth } from '../contexts/AuthContext';
 import { BarCodeScannerResult } from 'expo-barcode-scanner';
-import { API_URL } from '@env';
+import { Box, Button, Center, Flex, Icon, VStack, Text, Spinner, Image } from 'native-base';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function QRScreen(): JSX.Element {
   const { cards, fetchCards, sendLoyaltyData, sendLoyaltyDataPoints, error } = useCardsEmployee();
   const [hasPermission, setHasPermission] = useState<PermissionStatus | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [cardId, setCardId] = useState<string | null>(null);
-  cardId as string
   const [isQRCodeProcessed, setIsQRCodeProcessed] = useState(false);
   const { user } = useAuth();
+  const [showCamera, setShowCamera] = useState(false);
 
   useEffect(() => {
-    // Verifica se o usuário está disponível e se possui um companyId antes de buscar os cartões
     if (user && user.companyId) {
       fetchCards();
     } else {
@@ -29,18 +29,10 @@ export default function QRScreen(): JSX.Element {
     })();
   }, [user]);
 
-  // if (error) {
-  //   return (
-  //     <View style={styles.container}>
-  //       <Text style={styles.errorText}>Erro: {error}</Text>
-  //     </View>
-  //   );
-  // }
-
   const handleQRCodeRead = async ({ type, data }: BarCodeScannerResult) => {
-    if (isQRCodeProcessed) return; // Se já processado, saia
+    if (isQRCodeProcessed) return;
 
-    setIsQRCodeProcessed(true); // Marque como processado
+    setIsQRCodeProcessed(true);
 
     try {
       console.log('QR Code Data:', data);
@@ -52,26 +44,33 @@ export default function QRScreen(): JSX.Element {
         return;
       }
 
-      let responseMessage = '';
-
       if (qrData.cardId && qrData.companyCardId) {
-        // Chama sendLoyaltyDataPoints se o QR Code contém cardId e companyCardId
+        console.log('Sending loyalty data points:', {
+          cardId: qrData.cardId,
+          companyCardId: qrData.companyCardId,
+          token: qrData.token,
+        });
+
         await sendLoyaltyDataPoints({
           cardId: qrData.cardId,
           companyCardId: cardId as string,
           token: qrData.token,
         });
       } else if (qrData.customerId) {
-        // Chama sendLoyaltyData se o QR Code contém customerId
+        console.log('Sending loyalty data:', {
+          customerId: qrData.customerId,
+          companyCardId: cardId,
+          token: qrData.token,
+        });
+
         await sendLoyaltyData({
           customerId: qrData.customerId,
           companyCardId: cardId as string,
           token: qrData.token,
         });
       } else {
-        responseMessage = 'Dados do QR Code incompletos';
+        Alert.alert('Erro', 'Dados do QR Code incompletos.');
       }
-
     } catch (error: any) {
       console.error('Failed to process QR Code:', error);
       Alert.alert('Erro', error.response?.data?.message || 'Falha ao processar o QR Code.');
@@ -81,126 +80,116 @@ export default function QRScreen(): JSX.Element {
   };
 
   if (hasPermission === null) {
-    return <View style={styles.container}><Text>Solicitando permissão da câmera...</Text></View>;
+    return (
+      <Center flex={1} bg="#252525">
+        <Spinner color="white" size="lg" />
+        <Text color="white" mt={3}>Solicitando permissão da câmera...</Text>
+      </Center>
+    );
   }
 
   if (hasPermission !== 'granted') {
-    return <View style={styles.container}><Text>Acesso à câmera não permitido.</Text></View>;
+    return (
+      <Center flex={1} bg="#252525">
+        <Text color="white">Acesso à câmera não permitido.</Text>
+      </Center>
+    );
   }
 
+  const handleOpenScanner = (id: string) => {
+    setCardId(id);
+    setIsScannerOpen(true);
+    setTimeout(() => {
+      setShowCamera(true);
+    }, 500);
+  };
+
   return (
-    <View style={styles.container}>
+    <Box flex={1} bg="#252525">
       {isScannerOpen ? (
-        <Camera
-          style={styles.camera}
-          type={CameraType.back}
-          onBarCodeScanned={isScannerOpen ? handleQRCodeRead : undefined}
-        >
-          <Text style={styles.centerText}>Aponte a câmera para o QR Code</Text>
-        </Camera>
+        showCamera ? (
+          <Camera
+            style={{ flex: 1 }}
+            type={CameraType.back}
+            onBarCodeScanned={isScannerOpen ? handleQRCodeRead : undefined}
+          >
+            <Box flex={1} justifyContent="space-between" alignItems="center">
+              <Center mt={12} px={4}>
+                <Icon as={MaterialIcons} name="qr-code-scanner" size="4xl" color="white" />
+              </Center>
+              <Center mb={10} px={4}>
+                <Button
+                  onPress={() => {
+                    setIsScannerOpen(false);
+                    setShowCamera(false);
+                    setIsQRCodeProcessed(false);
+                  }}
+                  colorScheme="red"
+                  variant="solid"
+                  size="lg"
+                  rounded="full"
+                  _text={{
+                    color: 'white',
+                    fontWeight: 'bold',
+                    width: '300px',
+                    textAlign: 'center',
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </Center>
+            </Box>
+          </Camera>
+        ) : (
+          <Center flex={1} bg="#252525">
+            <Spinner color="white" size="lg" />
+            <Text color="white" mt={3}>Inicializando a câmera...</Text>
+          </Center>
+        )
       ) : (
-        <ScrollView contentContainerStyle={styles.cardsContainer}>
+        <ScrollView contentContainerStyle={{ padding: 40, marginTop: 20 }}>
           {cards.length > 0 ? (
             cards.map((card) => (
-              <View key={card.id} style={styles.card}>
+              <Box key={card.id} bg="blueGray.700" rounded="lg" shadow={2} mb={4} p={4} alignItems="center">
                 <Image
-                  style={styles.cardImage}
-                  source={{ uri: `http://${API_URL}/${card.image}` }} // Certifique-se de que API_URL está definido corretamente
+                  source={{ uri: `http://192.168.1.5:3333/${card.image}` }}
+                  alt={card.name}
+                  width="90%"
+                  height={250}
+                  rounded="xl"
+                  resizeMode="cover"
                 />
-                <View style={styles.cardContent}>
-                  <Text style={styles.cardTitle}>{card.name}</Text>
-                  <Text style={styles.cardPoints}>{card.maxPoints} Points</Text>
-                  <TouchableOpacity onPress={() => { setIsScannerOpen(true); setCardId(card.id);}} style={styles.qrButton}>
-                    <Text style={styles.qrButtonText}>Ler QR Code</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+                <VStack space={3} mt={4} alignItems="left">
+                  <Text fontSize="xl" color="white" bold>{card.name}</Text>
+                  <Text fontSize="md" color="gray.400">{card.maxPoints} Pontos</Text>
+                  <Button
+                    onPress={() => handleOpenScanner(card.id)}
+                    colorScheme="blue"
+                    bg="#2196F3"
+                    style={{
+                      width: '100%',
+                      borderRadius: 10,
+                      height: 60,
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Flex direction="row" align="center" justify="center" width="100%">
+                      <Icon as={MaterialIcons} name="qr-code-scanner" size="md" color="white" />
+                      <Text color="white" fontWeight="medium" ml={2}>
+                        LER QRCODE
+                      </Text>
+                    </Flex>
+                  </Button>
+                </VStack>
+              </Box>
             ))
           ) : (
-            <Text style={styles.noCardsText}>Nenhum cartão disponível</Text>
+            <Center flex={1}>
+              <Text fontSize="lg" color="white">Nenhum cartão disponível</Text>
+            </Center>
           )}
         </ScrollView>
       )}
-    </View>
+    </Box>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#252525',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardsContainer: {
-    marginTop: 20,
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  card: {
-    marginVertical: 10,
-    backgroundColor: '#333333',
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3.84,
-    elevation: 5,
-    width: '90%',
-    maxWidth: 350,
-  },
-  cardImage: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    resizeMode: 'cover',
-  },
-  cardContent: {
-    padding: 10,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 5,
-  },
-  cardPoints: {
-    fontSize: 14,
-    color: '#fff',
-    opacity: 0.8,
-    marginBottom: 10,
-  },
-  qrButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#5fa8d3',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-    width: '50%',
-  },
-  qrButtonText: {
-    color: '#fff',
-    marginLeft: 5,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 16,
-  },
-  noCardsText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  cameraContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  camera: {
-    flex: 1,
-    width: '100%',
-  },
-  centerText: {
-    fontSize: 18,
-    color: 'white',
-  },
-});

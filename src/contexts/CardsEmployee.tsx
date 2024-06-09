@@ -84,7 +84,7 @@ const CardsEmployeeProvider: React.FC<CardsProviderProps> = ({ children }) => {
         Toast.show({ description: 'Requisição inválida', ...toastOptions });
         break;
       case 403:
-        Toast.show({ description: 'Token inválido ou cartão não corresponde à empresa correta', ...toastOptions });
+        Toast.show({ description: 'O cartão utilizado não corresponde ao cartão do cliente.', ...toastOptions });
         break;
       case 500:
         Toast.show({ description: 'Erro no servidor', ...toastOptions });

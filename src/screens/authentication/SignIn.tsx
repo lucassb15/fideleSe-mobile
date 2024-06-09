@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { Box, FormControl, Input,  } from 'native-base';
+import PageButton from '../../components/Button';
 
 // Componente da tela de login
 const LoginScreen = () => {
@@ -40,21 +42,40 @@ const handleLogin = async () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Faça login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        value={email}
-        onChangeText={setEmail}
+      <Image
+        source={require('./LogoFidelese.png')} // Atualize o caminho da imagem
+        style={styles.image}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Button title="Login" onPress={handleLogin} />
+      <Box alignItems="center" width="100%">
+        <FormControl width="100%" maxW="100%">
+          <FormControl.Label color={'white'}>E-mail</FormControl.Label>
+          <Input
+            placeholder="Digite seu e-mail"
+            value={email}
+            onChangeText={setEmail}
+            width="100%"
+            color={'white'}
+            p='12px'
+          />
+        </FormControl>
+      </Box>
+    <Box alignItems="center" width="100%">
+        <FormControl width="100%" maxW="100%">
+          <FormControl.Label color={'white'}>Senha</FormControl.Label>
+          <Input
+            placeholder="Digite sua senha"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            width="100%"
+            color={'white'}
+            p='12px'
+          />
+        </FormControl>
+      </Box>
+      <Box alignItems="center" marginTop={'20px'}>
+        <PageButton handle={handleLogin} />
+      </Box>
     </View>
   );
 };
@@ -64,6 +85,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#303030',
     padding: 20,
   },
   title: {
@@ -79,6 +101,15 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginBottom: 10,
     paddingHorizontal: 10,
+  },
+  button: {
+    color: "red"
+  },
+  image: {
+    width: 120,
+    height: 120,
+    marginBottom: 24,
+    borderRadius: 10,
   },
 });
 
