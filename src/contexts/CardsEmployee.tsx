@@ -1,8 +1,22 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Toast } from 'native-base';
 import { getAPIClient } from '../api/axios';
+import { useAuth } from './AuthContext';
 
-// Definição dos tipos para os dados de cartões e erros
+interface AxiosError {
+  response: {
+    data: {
+      message: string
+    }
+  }
+}
+interface QrCodeData {
+  customerId?: string;
+  token: string;
+  companyCardId: string;
+  cardId?: string;
+}
+
 interface CardProps {
   id: string;
   companyId: string;
@@ -14,55 +28,110 @@ interface CardProps {
 interface CardsEmployeeContextData {
   cards: CardProps[];
   fetchCards: () => void;
+  sendLoyaltyData: (data: QrCodeData) => Promise<void>;
+  sendLoyaltyDataPoints: (data: QrCodeData) => Promise<void>;
   error: string | null;
 }
 
-// Contexto inicializado com valores padrão
 const CardsEmployeeContext = createContext<CardsEmployeeContextData>({
   cards: [],
   fetchCards: () => {},
+  sendLoyaltyData: async () => {},
+  sendLoyaltyDataPoints: async () => {},
   error: null,
 });
 
-// Provider
-const CardsEmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+interface CardsProviderProps {
+  children: ReactNode;
+}
+
+const CardsEmployeeProvider: React.FC<CardsProviderProps> = ({ children }) => {
   const [cards, setCards] = useState<CardProps[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-//   Função para buscar cartões
-const fetchCards = async () => {
-  if (!user?.companyId) {
-    console.log("User company ID is not available.");
-    return;
-  }
+  const fetchCards = async () => {
+    if (!user?.companyId) {
+      console.log("O ID da empresa do usuário não está disponível.");
+      return;
+    }
     try {
-    const api = await getAPIClient();
-    const response = await api.get(`/cards/${user.companyId}`);
-    setCards(response.data);
-  } catch (error: any) {
-    console.error("Failed to fetch cards:", error);
-    setError(error.response?.data.message || "Erro desconhecido");
+      const api = await getAPIClient();
+      const response = await api.get(`/cards/${user.companyId}`);
+      setCards(response.data);
+    } catch (error: any) {
+      console.error("Falha ao buscar cartões:", error);
+      setError(error.response?.data.message || "Erro desconhecido");
+    }
+  };
+
+ const handleError = (error: any) => {
+    const toastOptions = {
+      duration: 4000,
+      placement: 'top' as 'top',
+      status: 'error' as 'error',
+      variant: 'subtle' as 'subtle',
+      isClosable: true,
+      minWidth: '80%',
+      style: {
+        backgroundColor: '#ff6b6b',
+      },
+    };
+
+  if (error.response) {
+    switch (error.response.status) {
+      case 400:
+        Toast.show({ description: 'Requisição inválida', ...toastOptions });
+        break;
+      case 403:
+        Toast.show({ description: 'O cartão utilizado não corresponde ao cartão do cliente.', ...toastOptions });
+        break;
+      case 500:
+        Toast.show({ description: 'Erro no servidor', ...toastOptions });
+        break;
+      default:
+        Toast.show({ description: 'Ocorreu um erro desconhecido', ...toastOptions });
+    }
+  } else {
+    Toast.show({ description: 'Falha ao processar o QR Code', ...toastOptions });
   }
 };
 
-// const fetchCards = async () => {
-//     console.log("Fetching cards with mock data...");
-//   // Usando dados mockados para teste
-//     setCards([
-//     { id: '663ed58d85ef0e1fec3c09ba', companyId: '663d23a1987bbfd1e94b00ea', name: 'Test', maxPoints: 10, image: 'uploads/6578309e985ce07f7ceaf955/1713917931732promo1_cacaushow.png' }
-//     ]);
-//     console.log("Cards set:", cards);
-//   setError(null); // Resetando erros anteriores se houver
-// };
 
-  // Efeito para carregar os cartões inicialmente
-    useEffect(() => {
-    console.log("Cards set:", cards);
-    }, [cards]);  // Este useEffect logará as mudanças no estado `cards`
+  const sendLoyaltyData = async (data: QrCodeData) => {
+    try {
+      const api = await getAPIClient();
+      console.log("Enviando dados para criação de cartão de fidelidade:", data);
+      const response = await api.post('/create/loyalty', data);
+      console.log('Resposta do backend:', response.data);
+      Toast.show({ description: 'Cartão fidelidade criado com sucesso!', placement: 'top' });
+    } catch (error: any) {
+      // console.error("Erro na resposta da API:", error);
+      handleError(error);
+      // setError((error as AxiosError).response?.data.message || 'Erro ao criar cartão fidelidade');
+    }
+  };
+
+  const sendLoyaltyDataPoints = async (data: QrCodeData) => {
+    try {
+      const api = await getAPIClient();
+      console.log("Enviando dados para adição de pontos:", data);
+      const response = await api.put('/edit/loyalty', data);
+      console.log('Resposta do backend:', response.data);
+      Toast.show({ description: 'Pontos adicionados com sucesso!', placement: 'top' });
+    } catch (error: any) {
+      // console.error("Erro na resposta da API:", error);
+      handleError(error);
+      // setError((error as AxiosError).response?.data.message || 'Erro ao adicionar pontos');
+    }
+  };
+
+  useEffect(() => {
+    fetchCards();
+  }, [user]);
 
   return (
-    <CardsEmployeeContext.Provider value={{ cards, fetchCards, error }}>
+    <CardsEmployeeContext.Provider value={{ cards, fetchCards, sendLoyaltyData, sendLoyaltyDataPoints, error }}>
       {children}
     </CardsEmployeeContext.Provider>
   );
@@ -77,4 +146,4 @@ export const useCardsEmployee = () => {
   return context;
 };
 
-export { CardsEmployeeProvider, CardsEmployeeContext };
+export { CardsEmployeeContext, CardsEmployeeProvider };

@@ -8,7 +8,7 @@ export const getAPIClient = async () => {
   // console.log('Token:', token)
 
   const api = axios.create({
-    baseURL: API_URL,
+    baseURL: 'http://192.168.1.5:3333',
     timeout: 10000,
   })
 
